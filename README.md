@@ -19,6 +19,6 @@ This project demonstrates advanced LVM (Logical Volume Manager) management on RH
 3. **Extend LV**: `sudo lvextend -L +1.5G /dev/vg_dev/lv_exam`.
 4. **Resize FS**: `sudo resize2fs /dev/vg_dev/lv_exam` (for Ext4).
 
-## ⚠️ Lessons Learned (The "Gotchas")
+## ⚠️ Lessons Learned 
 - **Autofs Conflict**: If `/mnt` is managed by Autofs, manual mounts will disappear after service restarts. Solution: Add the LV to `/etc/auto.nfs`.
 - **Ext4 Online Resize**: Sometimes `lvextend -r` fails because it tries to run `fsck` on a mounted volume. Manual `resize2fs` is the reliable fallback.
