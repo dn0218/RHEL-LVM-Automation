@@ -1,24 +1,35 @@
-# RHEL-LVM-Automation
-## 📌 Project Overview
-This project demonstrates advanced LVM (Logical Volume Manager) management on RHEL/Rocky Linux 9. It includes a comprehensive SOP for manual scaling and a Bash script to automate the process, specifically addressing real-world conflicts with **Autofs** and **Ext4** online resizing.
+# Local LVM Lifecycle Manager (RHEL 9 Edition)
+
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Platform](https://img.shields.io/badge/Platform-RHEL%209%20%7C%20Rocky%20Linux-orange.svg)
+
+This is an automated LVM management script designed to simplify logical volume lifecycle operations in enterprise Linux environments. This project is not only a practical tool, but also a deep hands-on implementation of core storage concepts from the **RHCSA (Red Hat Certified System Administrator)** certification.
 
 ## 🚀 Key Features
-- **Physical Volume Management**: Handling partitioned devices using `wipefs`.
-- **Volume Group Expansion**: Adding new physical disks to existing pools.
-- **Filesystem Awareness**: Intelligent resizing for both **XFS** and **Ext4**.
-- **Autofs Integration**: Resolving mount point invisibility caused by automounter master maps.
+- **Intelligent Scenario Detection**: Automatically identifies the state of the target path using `findmnt` and `lsblk`.
+- **Force Cleanup Mechanism**: Integrates `wipefs` and lazy unmount (Lazy Umount) to resolve `device or resource busy` errors.
+- **Online Capacity Expansion**: Supports non-disruptive, online resizing for both XFS and EXT4 file systems.
+- **Robust Handling**: Locks metadata before disk signature cleanup to prevent logical chain breakage.
 
-## 📂 Project Structure
-- `scripts/lvm_extend.sh`: The main automation script.
-- `docs/troubleshooting.md`: Logs of common errors (e.g., Device is partitioned, fsck failures).
-- `configs/auto.nfs`: Sample Autofs configuration for LVM devices.
+## 🎓 RHCSA Coverage
+This script implements the following key RHCSA exam and real-world administration concepts:
 
-## 🛠️ Manual SOP (Quick Steps)
-1. **Prepare PV**: `sudo pvcreate /dev/sdb` (Use `wipefs -a` if partitioned).
-2. **Extend VG**: `sudo vgextend vg_dev /dev/sdb`.
-3. **Extend LV**: `sudo lvextend -L +1.5G /dev/vg_dev/lv_exam`.
-4. **Resize FS**: `sudo resize2fs /dev/vg_dev/lv_exam` (for Ext4).
+1. **Physical Volume (PV) Management**  
+   Handles residual signatures and force-initializes physical devices.
 
-## ⚠️ Lessons Learned 
-- **Autofs Conflict**: If `/mnt` is managed by Autofs, manual mounts will disappear after service restarts. Solution: Add the LV to `/etc/auto.nfs`.
-- **Ext4 Online Resize**: Sometimes `lvextend -r` fails because it tries to run `fsck` on a mounted volume. Manual `resize2fs` is the reliable fallback.
+2. **Volume Group (VG) Management**  
+   Creates new volume groups and dynamically extends existing ones (`vgextend`).
+
+3. **Logical Volume (LV) Management**  
+   Allocates space on demand and resizes volumes using `lvextend`.
+
+4. **Filesystem Operations**  
+   Manages differences between XFS (`xfs_growfs`) and EXT4 (`resize2fs`) during expansion.
+
+5. **Troubleshooting & Device Handling**  
+   Resolves common production issues such as mounted partitions and device conflicts.
+
+## 🛠️ Quick Start
+```bash
+chmod +x lvm_std_extend.sh
+sudo ./lvm_std_extend.sh
