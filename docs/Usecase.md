@@ -120,10 +120,12 @@ nvme0n1       259:0    0   20G  0 disk
   └─rhel-swap 253:1    0    2G  0 lvm  [SWAP]
 ```
 
-📦 Scenario 1: Build LVM from Scratch (CLEAN_DIR)
+## 📦 Scenario 1: Build LVM from Scratch (CLEAN_DIR)
 🎯 Objective
 
 Initialize /dev/sda and mount it to a new empty directory /mnt/data1.
+
+▶️ Execution Flow
 ```bash
 [danny@rhel /]$ sudo ./lvm_std_extend.sh 
 请输入挂载点路径 (例如 /mnt/data3): /mnt/data1
@@ -192,11 +194,12 @@ User input:
 - Demonstrates full LVM stack:
 - Disk → PV → VG → LV → Filesystem → Mount
 
-📦 Scenario 2: Partition Migration / Overwrite (PARTITIONED)
+## 📦 Scenario 2: Partition Migration / Overwrite (PARTITIONED)
 🎯 Objective
 
 Convert existing partition /dev/sdb1 (mounted on /mnt/data2) into LVM.
 
+▶️ Execution Flow
 ```bash
 [danny@rhel /]$ lsblk
 NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
@@ -294,10 +297,12 @@ umount -l
 - Full disk overwrite
 - Requires explicit user confirmation
 
-📦 Scenario 3: Online LVM Extension (Same Disk)
+## 📦 Scenario 3: Online LVM Extension (Same Disk)
 🎯 Objective
 
 Extend existing LVM /mnt/data3 from 1G → 2G
+
+▶️ Execution Flow
 ```bash
 [danny@rhel /]$ sudo ./lvm_std_extend.sh
 请输入挂载点路径 (例如 /mnt/data3): /mnt/data3
@@ -342,3 +347,91 @@ Filesystem                  Type  Size  Used Avail Use% Mounted on
 Filesystem                   Size  Used Avail Use% Mounted on
 /dev/mapper/vg_test-lv_test  2.0G   47M  1.9G   3% /mnt/data3
 ```
+
+## 📦 Scenario 4: Cross-Disk VG Expansion
+
+🎯 Objective
+Extend LVM beyond original disk by adding /dev/sda into vg_test
+
+▶️ Precondition Setup (Free up /dev/sda)
+```bash
+[danny@rhel /]$ sudo umount /mnt/data1
+[sudo] password for danny: 
+[danny@rhel /]$ sudo vgremove -y vg_data1
+  Logical volume "lv_data1" successfully removed.
+  Volume group "vg_data1" successfully removed
+```
+
+▶️ Execution Flow
+```bash
+[danny@rhel /]$ sudo ./lvm_std_extend.sh
+请输入挂载点路径 (例如 /mnt/data3): /mnt/data3
+🔍 场景识别: [3] LVM 卷 (/dev/mapper/vg_test-lv_test)
+------------------------------------------------
+/dev/sda                                     5G disk 
+/dev/sdb                                     5G disk 
+/dev/sdc                                     5G disk 
+/dev/nvme0n1                                20G disk 
+请输入要使用的物理磁盘 (例如 /dev/sdb): /dev/sda
+  Volume group "vg_test" successfully extended
+增加的大小 (例如 +1G): +1G
+  File system xfs found on vg_test/lv_test mounted at /mnt/data3.
+  Size of logical volume vg_test/lv_test changed from 2.00 GiB (512 extents) to 3.00 GiB (768 extents).
+  Extending file system xfs to 3.00 GiB (3221225472 bytes) on vg_test/lv_test...
+xfs_growfs /dev/vg_test/lv_test
+meta-data=/dev/mapper/vg_test-lv_test isize=512    agcount=8, agsize=65536 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=1, sparse=1, rmapbt=0
+         =                       reflink=1    bigtime=1 inobtcount=1 nrext64=0
+data     =                       bsize=4096   blocks=524288, imaxpct=25
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0, ftype=1
+log      =internal log           bsize=4096   blocks=16384, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+data blocks changed from 524288 to 786432
+xfs_growfs done
+  Extended file system xfs on vg_test/lv_test.
+  Logical volume vg_test/lv_test successfully resized.
+------------------------------------------------
+Filesystem                  Type  Size  Used Avail Use% Mounted on
+/dev/mapper/vg_test-lv_test xfs   3.0G   54M  2.9G   2% /mnt/data3
+✅ 任务完成！
+[danny@rhel /]$ lsblk
+NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sda               8:0    0    5G  0 disk 
+sdb               8:16   0    5G  0 disk 
+└─vg_migration1-lv_migration1
+                253:4    0    1G  0 lvm  /mnt/data2
+sdc               8:32   0    5G  0 disk 
+└─vg_test-lv_test
+                253:2    0    3G  0 lvm  /mnt/data3
+sr0              11:0    1 12.7G  0 rom  /run/media/danny/RHEL-9-7-0-BaseOS-x86_64
+nvme0n1         259:0    0   20G  0 disk 
+├─nvme0n1p1     259:1    0  600M  0 part /boot/efi
+├─nvme0n1p2     259:2    0    1G  0 part /boot
+└─nvme0n1p3     259:3    0 18.4G  0 part 
+  ├─rhel-root   253:0    0 16.4G  0 lvm  /
+  └─rhel-swap   253:1    0    2G  0 lvm  [SWAP]
+[danny@rhel /]$ df -hT /mnt/data3
+Filesystem                  Type  Size  Used Avail Use% Mounted on
+/dev/mapper/vg_test-lv_test xfs   3.0G   54M  2.9G   2% /mnt/data3
+```
+🧠 Insight
+💡 LVM Core Concept
+Multiple PVs → One VG → Flexible LV
+- Breaks single disk limitation
+- Supports horizontal scaling
+- No service interruption
+
+🔍 Verification Commands
+```bash
+vgs
+lvs
+pvs
+df -hT
+lsblk
+```
+
+
+
